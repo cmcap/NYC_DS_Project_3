@@ -4,7 +4,7 @@
 packages <- c("jsonlite", "dplyr", "purrr")
 purrr::walk(packages, library, character.only = TRUE, warn.conflicts = FALSE)
 
-setwd("~/Desktop/Kaggle Apartment Data")
+setwd("~/Desktop/Kaggle_Apartment_Data")
 test_data <- fromJSON("test.json")
 train_data <- fromJSON("train.json")
 
@@ -68,6 +68,8 @@ train_data$month <- format(train_data$created, "%m")
 test_data$month <- format(test_data$created, "%m")
 #I'll get back to this
 
+
+
 #number of descriptive words
 head(train_data$description)
 train_data$num_words = sapply(gregexpr("\\W+", train_data$description), length) + 1
@@ -83,49 +85,166 @@ num_unique[order(num_unique$Freq, decreasing = TRUE),][1:20,]
 train_data$features <- lapply(train_data$features, paste, collapse = ' ')
 test_data$features <- lapply(test_data$features, paste, collapse = ' ')
 
+# #function for important features
+# features <- function(data,feature){
+#   test = test = lapply(data, grep, feature, fixed = TRUE) == 1
+#   test[is.na(test)] <- 0
+#   data$feature <- test
+# }
+
 #elevators
 test = lapply(train_data$features, grep, 'Elevator', fixed = TRUE) == 1
 test[is.na(test)] <- 0
 train_data$Elevator <- test
-train_data$Elevator <- as.factor(train_data$Elevator)
+
 
 test = lapply(test_data$features, grep, 'Elevator', fixed = TRUE) == 1
 test[is.na(test)] <- 0
 test_data$Elevator <- test
-test_data$Elevator <- as.factor(test_data$Elevator)
+
 
 #cats allowed
 test = lapply(train_data$features, grep, 'Allowed', fixed = TRUE) == 1
 test[is.na(test)] <- 0
 train_data$Allowed <- test
-train_data$Allowed <- as.factor(train_data$Elevator)
+
 
 test = lapply(test_data$features, grep, 'Allowed', fixed = TRUE) == 1
 test[is.na(test)] <- 0
 test_data$Allowed <- test
-test_data$Allowed <- as.factor(test_data$Elevator)
+
 
 #hardwood floors
 test = lapply(train_data$features, grep, 'Hardwood Floors', fixed = TRUE) == 1
 test[is.na(test)] <- 0
 train_data$floors <- test
-train_data$floors <- as.factor(train_data$floors)
+
 
 test = lapply(test_data$features, grep, 'Hardwood Floors', fixed = TRUE) == 1
 test[is.na(test)] <- 0
 test_data$floors <- test
-test_data$floors <- as.factor(test_data$floors)
+
 
 #no fee
 test = lapply(train_data$features, grep, 'No Fee', fixed = TRUE) == 1
 test[is.na(test)] <- 0
 train_data$noFee <- test
-train_data$noFee <- as.factor(train_data$noFee)
+
 
 test = lapply(test_data$features, grep, 'No Fee', fixed = TRUE) == 1
 test[is.na(test)] <- 0
 test_data$noFee <- test
-test_data$noFee <- as.factor(test_data$noFee)
+
+#streets and avenues and stuff
+# 
+# lapply(test_data$display_address, grep, 'Street', fixed = TRUE) 
+# test[is.na(test)] <- 0
+# train_data$ave <- test
+# 
+# test = lapply(test_data$street_address, grep, 'Avenue|Ave', fixed = TRUE) 
+# test[is.na(test)] <- 0
+# test_data$ave <- test
+# 
+# test = lapply(train_data$street_address, grep, 'Street', fixed = TRUE) == 1
+# test[is.na(test)] <- 0
+# train_data$street <- test
+# 
+# test = lapply(test_data$street_address, grep, 'Street|St', fixed = TRUE) == 1
+# test[is.na(test)] <- 0
+# test_data$ave <- test
+# 
+# train_data$street_type <- rep('a', nrow(train_data))
+# train_data$street_type[train_data$street == 1] <- 'street'
+# train_data$street_type[train_data$ave == 1] <- 'ave'
+# train_data$street_type[train_data$street_type == 'a'] <- 'other'
+
+#neighborhoods maybe?
+library(ggplot2)
+library(ggmap)
+library(class)
+
+# myLoc <- c(long=-73.9779, lat=40.7518)
+# 
+# myMap <- get_map(location = myLoc,
+#                 source  = "google",
+#                 maptype = "roadmap",
+#                 zoom=11)
+# 
+# ggmap(myMap) +
+#   geom_point(data=train_data, aes(x=longitude, y=latitude),
+#              alpha=0.5, color="darkred", size=0.2)
+
+m_neighborhoods <- c("Chelsea", "Washington Heights", "Harlem", 
+                     "East Harlem", "Upper West Side", 
+                     "Upper East Side", "Midtown West", "Midtown East",
+                     "Greenwich Village",
+                     "Lower East Side", "Murray Hill",
+                     "Stuyvesant Town", "Upper Manhattan", "Hell's Kitchen", 
+                     "East Village", "SoHo", "Financial District", "Gramercy",
+                     "Garment District", "Morningside Heights", "Tribeca",
+                     "Chinatown", "Times Square")
+
+b_neighborhoods <- c("Bay Ridge", "Sunset Park", "Sheepshead Bay",
+                     "Borough Park", "Midwood", "Flatbush", 
+                     "Park Slope", "East New York", "Bedford-Stuyvesant", 
+                     "Williamsburg", "Greenpoint", "Red Hook", "Downtown Brooklyn", 
+                     "DUMBO", "Prospect Park", 
+                     "Cypress Hills", "Bushwick", "Brooklyn Heights",
+                     "Cobble Hill")
+
+q_neighborhoods <- c("Astoria", "Long Island City", "Ridgewood", "Woodside", 
+                     "Elmhurst", "Jackson Heights", "Corona", "Murray Hill", "Flushing", 
+                     "Kew Gardens", "Jamaica", "Bayside", "Whitestone")
+
+s_neighborhoods <- c("West New Brighton", "Mariners Harbor")
+
+
+bx_neighborhoods <- c("West Bronx", "Yankee Stadium")
+
+nj_neighborhoods <- c("Newark")
+
+getCoords <- function(neighborhoods){  
+  num_n <- length(neighborhoods)
+  if (neighborhoods[1]=="Newark"){
+    neighborhoods <- paste0(neighborhoods, ", NJ")
+  } else {
+    neighborhoods <- paste0(neighborhoods, ", NY")
+  }
+  
+  lat <- rep(0, num_n)
+  lon <- rep(0, num_n)
+  
+  for(i in 1:num_n){
+    n <- neighborhoods[i]
+    reply <- suppressMessages(geocode(n)) # You may want to expand on this to get status
+    lat[i] <- reply$lat
+    lon[i] <- reply$lon
+  }
+  return(data.frame(n=neighborhoods, lat=lat, lon=lon))
+}
+
+X <- do.call("rbind", list(getCoords(m_neighborhoods), getCoords(b_neighborhoods), 
+                                                      getCoords(q_neighborhoods), getCoords(s_neighborhoods),
+                                                      getCoords(bx_neighborhoods), getCoords(nj_neighborhoods)))
+
+neighborhoods <- knn(X[, c("lat", "lon")], train_data[, c(8,10)], X$n, k = 1)
+train_data$neighborhoods <- neighborhoods
+neighborhoods <- knn(X[, c("lat", "lon")], test_data[, c(8,10)], X$n, k = 1)
+test_data$neighborhoods <- neighborhoods
+
+#distance from the center?
+library(geosphere)
+centerX <- median(train_data$latitude)
+centerY <- median(train_data$longitude)
+x1 <-train_data$latitude[1]
+y1 <- train_data$longitude[1]
+
+dist <- c()
+for (i in 1:nrow(train_data)){
+  dist[i] <- distm(c(centerY, centerX), 
+        c(train_data$longitude[i],train_data$latitude[i]), fun = distHaversine)
+}
+train_data$dist <- dist 
 
 #other feature manipulation
 train_data$bathrooms[train_data$bathrooms > 5] <- 5
@@ -145,69 +264,52 @@ train_data$important = train_data$Elevator + train_data$noFee + train_data$Allow
 test_data$important = test_data$Elevator + test_data$noFee + test_data$Allowed + test_data$floors
 train_data$important = as.factor(train_data$important)
 test_data$important = as.factor(test_data$important)
-#to test the accuracy
- 
+
+#_______________________________________________________________________#
+#possible area classification with svm?
+library(e1071)
+area <- svm(factor(interest_level) ~ latitude + longitude,
+            data = train,
+            kernel = 'radial',
+            cost =1,
+            gamma = 0.5)
+
+#not good predictions
+svm_predicted <- predict(area, test)
+svm_predictions <- predict(area, test, type = 'prob', na.action = na.pass)
+
+set.seed(0)
+cv.multi = tune(svm,
+                factor(interest_level) ~ latitude + longitude,
+                data = train,
+                kernel = "radial",
+                ranges = list(cost = 10^(seq(-1, 1.5, length = 20)),
+                              gamma = 10^(seq(-2, 1, length = 20))))
+
+#sub training and test datasets 
 set.seed(0)
 inds = sample(1:nrow(train_data), 0.75*nrow(train_data))
 train <- train_data[inds, ]
 test <- train_data[-inds, ]
 
-# #tree models
-# library(gbm)
-library(tree)
-# library(data.table)
-# n.trees = seq(from = 100, to = 20000, by = 100)
-# set.seed(0)
-# boostInterest = gbm(interest_level ~ bathrooms + bedrooms +
-#                       price + num_features + latitude + longitude + 
-#                       num_photos, data = train_data,
-#                     distribution = "multinomial",
-#                     n.trees = 20000,
-#                     interaction.depth = 5)
-# 
-# #prediction
-# pred = predict(boostInterest, test_data, n.trees = n.trees, type = 'response')
-# 
-# #checking the accuracy if using subset
-# library(caret)
-# pred2 <- as.factor(colnames(pred[,,69])[max.col(pred[,,69])])
-# confusionMatrix(pred2, test$interest_level)$overall
-# 
-# #choose the proper prediction and write to a dataframe 
-# preds <- data.frame(pred[,,70])
+#_______________________________________________________________________#
+#how about a random forest in good measure
+library(randomForest)
+rf.apartment = randomForest(factor(interest_level) ~ bathrooms + bathrooms +
+                              price + num_features + latitude + longitude +
+                              num_photos + score + num_words +
+                              important,
+                            data = train, importance = TRUE, na.action = na.exclude)
 
-testPreds <- data.frame(listing_id = test_data$listing_id, predictions[,c('high', 'medium', 'low')])
-library(data.table)
-fwrite(testPreds, "submission.csv")
+rf.predict <- predict(rf.apartment, test_data, type = 'prob', na.action = na.exclude)
+rf.predictions <- predict(rf.apartment, test, type = 'class', na.action = na.pass)
 
-
-# #h2o
-# library(h2o)
-# # 
-# train[-c(4,,11)]
-# # 
-# vars2 <- setdiff(colnames(test_data), 'interest_level')
-# # 
-# h2o.init()
-# train <- h2o::as.h2o(train[-c(4,7,12)])
-# 
-# set.seed(0)
-# gbm1 <- h2o.gbm(x = varnames
-#                 ,y = "interest_level"
-#                 ,training_frame = train
-#                 ,distribution = "multinomial"
-#                 ,model_id = "gbm1"
-#                 ,ntrees = 5000
-#                 ,max_depth = 7
-#                 ,stopping_rounds = 5
-#                 ,stopping_metric = "logloss"
-#                 ,stopping_tolerance = 0
-# )
+#replace the na values
+rf.predict[is.na(rf.predict)] <- predictions[is.na(rf.predict)]
 
 #_______________________________________________________________________#
+
 #test models for ensemble
-library(e1071)
-y <- svm()
 
 library(nnet)
 x <- multinom(interest_level ~ building_score, train_data, na.action = na.pass)
@@ -228,15 +330,15 @@ fitControl <- trainControl(method = "cv",
                            
 
 set.seed(0) 
-gbmGrid <- expand.grid(interaction.depth = c(2,5), 	
-                       n.trees = seq(from = 100, to = 2000, by = 100),
+gbmGrid <- expand.grid(interaction.depth = c(2,3), 	
+                       n.trees = seq(from = 100, to = 3000, by = 100),
                        shrinkage = 0.1, 
                        n.minobsinnode = 10)
 
-gbm <- train(interest_level ~ bathrooms + bathrooms +
-               price + num_features + latitude + longitude +
+gbm <- train(interest_level ~ bathrooms + bedrooms +
+               price + num_features +
                num_photos + score + num_words +
-               important + created, data = train, method = "gbm", 
+               neighborhoods, data = train, method = "gbm", 
                  trControl = fitControl, 
                  verbose = TRUE,
                  # tuneLength = 1,
@@ -245,14 +347,26 @@ gbm <- train(interest_level ~ bathrooms + bathrooms +
                  metric = "logLoss",
                  maximize = FALSE)
 
+#log loss
+gbm$resample$logLoss
+
+#variable importance
+gbmImp <- varImp(gbm, scale = TRUE)
+plot(gbmImp, top = 30)
+
+#a plot of log loss
+trellis.par.set(caretTheme())
+plot(gbm, metric = "logLoss")
+#_______________________________________________________________________#
+#final gbm after selecting best parammeters
 gbm$bestTune
 
 
 fitCtrl <- trainControl(method = 'none')
-gbmFinal <- train(interest_level ~ bathrooms + bathrooms +
-                    price + num_features + latitude + longitude +
+gbmFinal <- train(interest_level ~ bathrooms + bedrooms +
+                    price + num_features +
                     num_photos + score + num_words +
-                    important, data = train_data, method = "gbm", 
+                    neighborhoods, data = train, method = "gbm", 
              trControl = fitCtrl, 
              verbose = TRUE,
              # tuneLength = 1,
@@ -262,25 +376,83 @@ gbmFinal <- train(interest_level ~ bathrooms + bathrooms +
              maximize = FALSE)
 
 
-#variable importance
-gbmImp <- varImp(gbm, scale = TRUE)
-plot(gbmImp, top = 20)
+#predictions from the final gbm models
+gbm.class <- predict(gbmFinal, test, type = 'raw', na.action = na.pass)
+gbm.prob <- predict(gbmFinal, test, type = 'prob', na.action = na.pass)
 
-trellis.par.set(caretTheme())
-plot(gbm, metric = "logLoss")
-
-#predictions from the final models
-predicted <- predict(gbmFinal, test_data, type = 'prob', na.action = na.pass)
-lm_predicted <- predict(x, test_data, type = 'prob', na.action = na.pass)
+#predictions from multinomial regression
+lm.class <- predict(x, test, type = 'class', na.action = na.pass)
+lm.prob <- predict(x, test_data, type = 'prob', na.action = na.pass)
 
 #replacing NA values in the linear model
-lm_predicted[is.na(lm_predicted)] <- predicted[is.na(lm_predicted)]
+lmprob[is.na(lm.prob)] <- gbm.prob[is.na(lm.prob)]
 
-predictions<-(lm_predicted + predicted)/2
-
-gbm$resample$logLoss
-
+#ensemble
+predictions<-(lm_predictions + predictions*9)/10
 
 
-postResample(pred = predicted, test$interest_level)
-mnLogLoss(predicted, lev = c('high', 'medium', 'low'), model = 'cv')
+#trying to get log loss evaluation
+new <- data.frame(obs = test$interest_level, pred = gbm.class, gbm.prob)
+mnLogLoss(new, c('high', 'low', 'medium'))
+
+#_______________________________________________________________________#
+#writing to a csv
+
+testPreds <- data.frame(listing_id = test_data$listing_id, predictions[,c('high', 'medium', 'low')])
+library(data.table)
+fwrite(testPreds, "submission.csv")
+
+#_______________________________________________________________________#
+# Example of Stacking algorithms
+# create submodels
+library(caret)
+library(caretEnsemble)
+control <- trainControl(method="repeatedcv", number=3, repeats=3, savePredictions=TRUE, classProbs=TRUE)
+algorithmList <- c('lda', 'rpart', 'glm', 'knn', 'svmRadial')
+set.seed(0)
+models <- caretList(interest_level~bathrooms + bedrooms +
+                      price + num_features +
+                      num_photos + score + num_words +
+                      neighborhoods, data=train, trControl=control, methodList=algorithmList)
+results <- resamples(models)
+summary(results)
+dotplot(results)
+
+
+#______________________________________________________________________#
+#fuckin around with xgboost
+x_train = train[c('bathrooms', 'bedrooms', 'price', 'num_features', 'num_photos', 'score',
+                'num_words', 'neighborhoods', 'building_score', 'created', 'latitude', 'longitude')]
+x_val = test[c('bathrooms', 'bedrooms', 'price', 'num_features', 'num_photos', 'score',
+               'num_words', 'neighborhoods', 'building_score', 'created', 'latitude', 'longitude')]
+
+#dtest <- xgb.DMatrix(data.matrix(test_data))
+dtrain <- xgb.DMatrix(data.matrix(x_train), label = as.integer(factor(train$interest_level)))
+dval = xgb.DMatrix(data.matrix(x_val), label=as.integer(factor(test$interest_level)))
+
+xgb_params = list(
+  colsample_bytree= 0.7,
+  subsample = 0.7,
+  eta = 0.1,
+  objective= 'multi:softprob',
+  max_depth= 4,
+  min_child_weight= 1,
+  eval_metric= "mlogloss",
+  num_class = 4,
+  seed = 0
+)
+
+
+gbdt = xgb.train(params = xgb_params,
+                 data = dtrain,
+                 nrounds =1000,
+                 watchlist = list(train = dtrain, val=dval),
+                 print_every_n = 25,
+                 early_stopping_rounds=50)
+
+importance_matrix <- xgb.importance(names(x_train), model = gbdt)
+print(importance_matrix)
+xgb.plot.importance(importance_matrix = importance_matrix)
+
+
+allpredictions =  (as.data.frame(matrix(predict(gbdt,dtest), nrow=dim(test), byrow=TRUE)))
