@@ -51,7 +51,7 @@ space.sent<-c("spacious", "space", "full", "fully", "lots","tons", "huge", "plen
 
 mat.sent<-c("luxury", "luxury", "luxurious", "center", "central", "heart", "convenient", "conveniently", "easily", "overlooking", "historic", "helpful", "rare", "nearby", "exclusive", "prime")
 
-description<-lapply(lapply(listings$description, tolower), strsplit, split=" ")
+description<-lapply(lapply(listings$description, tolower), strsplit, split="\\W")
 desc.vec<-lapply(description, unlist)
 space.loc<-sapply(desc.vec, match, space.sent)
 space.count<-rep(0, length(listings))
@@ -75,8 +75,10 @@ characters<-sapply(listings$description, nchar)
 sentiment<-data.frame(unlist(listings$listing_id), unlist(listings$interest_level), 500*pos.count/characters, 500*space.count/characters, 500*mat.count/characters)
 colnames(sentiment)<-c("listing_id", "interest_level", "Positive.Affect", "Space.Affect", "About.Town.Affect")
 
-sentiment.raw<-data.frame(unlist(listings$listing_id), unlist(listings$interest_level), pos.count, space.count, mat.count)
-colnames(sentiment.raw)<-c("listing_id", "interest_level", "Positive.Affect", "Space.Affect", "About.Town.Affect")
+sentiment.raw<-data.frame(unlist(listings$listing_id), unlist(listings$interest_level), pos.count, space.count, mat.count, characters)
+colnames(sentiment.raw)<-c("listing_id", "interest_level", "Positive.Affect", "Space.Affect", "About.Town.Affect", "Character.Count")
+
+write.csv(sentiment.raw, "sentiment_probably_useless.csv")
 
 raw.lm<-lm(interest ~ Space.Affect, data=sentiment.raw)
 #.7% on saturated, .5% on space-only
