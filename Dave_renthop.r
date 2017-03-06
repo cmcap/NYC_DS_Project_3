@@ -6,11 +6,12 @@ listings<-fromJSON("train.json")
 listings2<-listings[-12] #Cut out data-problematic and statistically useless picture files
 
 #Inspect features
-#features<-tolower(unlist(listings2[[7]]))
+features<-tolower(unlist(listings2[[7]]))
+features<-table(features)
+features<-features[order(features, decreasing=T)]
+write.csv(features, "features.csv")
+
 #features<-gsub("-", "", features)
-#features<-table(features)
-#features<-features[order(features, decreasing=T)]
-#write.csv(features, "features.csv")
 
 listings2[[7]]<-sapply(listings2[[7]], paste, collapse=" ")
 listings2[[7]]<-tolower(listings2[[7]])

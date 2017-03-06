@@ -21,6 +21,12 @@ dummy.full<-model.matrix(interest_level ~., data=full_list[,13:62])[,-1]
 #features$interest_level<-"low"
 #dummy.full<-model.matrix(interest_level ~., data=features)[,-1]
 
+#Trying a Bernouilli Naive Bayes
+library(e1071)
+bnb.feat<-naiveBayes(y=full_list$interest_level[train], x=dummy.full[train,])
+bnb.pred<-predict(bnb.feat, dummy.full[-train,], type="raw")
+MultiLogLoss(full_list$interest_level[-train], bnb.pred)
+#Logloss 2.618795--quite bad.
 
 #Training
 train<-sample(1:nrow(full_list), .7*nrow(full_list))
@@ -43,7 +49,7 @@ library(randomForest)
 
 #Saturated Feature Model
 tree.train<-randomForest(full_list$interest_level[train] ~ ., data=train.feat, importance=T, mtry=9)
-#2.24 logloss
+#2.24 logloss--outperforms BNB
 
 # Determine ideal number of mtry for RF test models
 logl<-rep(0, 13)
@@ -111,7 +117,17 @@ library(psych)
 fa.parallel(dummy.full, fa="pc", n.iter=100)
 feature.pca<-principal(dummy.full, nfactors=30, rotate="none")
 pca.features<-cbind(full_list$listing_id, feature.pca$scores)
-write.csv(pca.features, "pca_30_features.csv")
+colnames(pca.features)[1]<-"listing_id"
+#write.csv(pca.features, "pca_30_features.csv")
+write.csv(pca.features, "pca_30_features_test.csv")
 
 pca.forest<-randomForest(full_list[train,]$interest_level ~ . , data=full_list[train,c(11,14:43)], importance=T, mtry=15)
 MultiLogLoss(full_list$interest_level[-train], predict(pca.forest, full_list[-train, c(11,14:43)], type="prob"))
+
+names(logl4)<-1:40
+log.df<-data.frame(1:55,logl4)
+colnames(log.df)<-c("Variables", "Log.Loss")
+library(ggplot2)
+l<-ggplot(log.df[1:40,], aes(x=Variables, y=Log.Loss))
+l + geom_line(lwd=2, aes(color="blue")) + labs(title="Pruning Random Forest Features", x="# of Features (plus Price)", y="Log-Loss") + theme(plot.title = element_text(hjust = 0.5)) + guides(color=F)
+
